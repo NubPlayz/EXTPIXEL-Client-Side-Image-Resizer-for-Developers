@@ -1,0 +1,50 @@
+.wrapper {
+    margin: 24px 0;
+    text-align: center;
+}
+
+.processingLabel {
+    font-size: 9px;
+    opacity: 0.5;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+}
+
+.counter {
+    font-size: 12px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.done {
+    color: #209cee;
+}
+
+.slash {
+    opacity: 0.5;
+    margin: 0 4px;
+}
+
+.total {
+    opacity: 0.7;
+}
+
+.label {
+    font-size: 9px;
+    opacity: 0.6;
+    margin-left: 6px;
+}
+
+.barWrap {
+    margin: 8px auto;
+    max-width: 400px;
+}
+
+.status {
+    font-size: 8px;
+    opacity: 0.6;
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

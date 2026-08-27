@@ -3,6 +3,11 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import ManualCropModal from './ManualCropModal'
 import { loadImg, processImage, type CropData } from '@/lib/imageProcessing'
 import { downloadDataUrl, downloadResultsAsZip } from '@/lib/download'
+import ToolSelector, { type ToolType } from './ToolSelector/ToolSelector'
+import BackgroundRemover from './BackgroundRemover/BackgroundRemover'
+import ImageUploader from './shared/ImageUploader'
+import ProcessingProgress from './shared/ProcessingProgress'
+import ResultGallery from './shared/ResultGallery'
 
 import chromeIcon from '../chrome16x16.png'
 import edgeIcon from '../edge.png'
@@ -61,6 +66,7 @@ const BROWSER_ICON_PNG: Record<Browser, unknown> = {
 
 
 export default function ImageResizer() {
+    const [activeTool, setActiveTool] = useState<ToolType>('resize')
     const [browser, setBrowser] = useState<Browser>('edge')
     const [targetW, setTargetW] = useState(440)
     const [targetH, setTargetH] = useState(280)
@@ -72,7 +78,6 @@ export default function ImageResizer() {
     const [processing, setProcessing] = useState(false)
     const [progress, setProgress] = useState(0)
     const [dragOver, setDragOver] = useState(false)
-    const [zipDownloadMode, setZipDownloadMode] = useState(true)
 
     const clickSoundRef = useRef<HTMLAudioElement | null>(null)
 
@@ -94,7 +99,7 @@ export default function ImageResizer() {
                 clickSoundRef.current.currentTime = 0
                 void clickSoundRef.current.play()
             } catch {
-              
+
             }
         }
 
@@ -105,12 +110,12 @@ export default function ImageResizer() {
         }
     }, [])
 
-    
+
     const [cropQueue, setCropQueue] = useState<UploadedFile[]>([])
     const [currentCropFile, setCurrentCropFile] = useState<UploadedFile | null>(null)
     const pendingCropResultsRef = useRef<ProcessedResult[]>([])
 
-    
+
     const aspectRef = useRef<number | null>(null)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -143,12 +148,6 @@ export default function ImageResizer() {
         uploads.forEach(u => URL.revokeObjectURL(u.preview))
         setUploads([])
         setResults([])
-    }
-
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault()
-        setDragOver(false)
-        addFiles(Array.from(e.dataTransfer.files))
     }
 
     const selectPreset = (p: Preset) => {
@@ -185,14 +184,14 @@ export default function ImageResizer() {
         const next = !keepAspect
         setKeepAspect(next)
         if (next) {
-            
+
             aspectRef.current = targetW / targetH
         } else {
             aspectRef.current = null
         }
     }
 
-     const handleProcess = async () => {
+    const handleProcess = async () => {
         if (!uploads.length || processing) return
         setResults([])
         setProgress(0)
@@ -266,399 +265,300 @@ export default function ImageResizer() {
         }
     }
 
-    const downloadAllAsZip = async () => {
-        if (!results.length) return
-        try {
-            await downloadResultsAsZip({
-                results: results.map(r => ({ dataUrl: r.dataUrl, filename: r.filename })),
-                browser,
-            })
-        } catch {
-            results.forEach((r, i) => {
-                setTimeout(() => downloadDataUrl(r.dataUrl, r.filename), i * 250)
-            })
-        }
-    }
-
-    const downloadAll = () => {
-        if (zipDownloadMode) {
-            void downloadAllAsZip()
-            return
-        }
-        results.forEach((r, i) => {
-            setTimeout(() => downloadDataUrl(r.dataUrl, r.filename), i * 250)
-        })
-    }
 
     const cropQueuePos = uploads.length - cropQueue.length
 
     return (
         <>
-        <main className="page-wrapper" aria-label="EXTPIXEL - EXTENSION IMAGE RESIZER">
-           
-            <header className="site-header">
-                <div className="nes-container is-rounded with-title hero-card">
-                    <p className="title">EXTPIXEL - EXTENSION IMAGE RESIZER</p>
-                    <div className="hero-content">
-                        <div className="hero-copy">
-                            <h1>EXTPIXEL</h1>
-                            <p className="tagline">EXTENSION IMAGE RESIZER</p>
-                            <p className="section-caption">General use & dev ready</p>
-                            <div className="privacy-badge">
-                                <i className="nes-icon lock is-small"></i>
-                                <span>100% CLIENT-SIDE - IMAGES STAY ON YOUR PC</span>
+            <main className="page-wrapper" aria-label="EXTPIXEL - EXTENSION IMAGE RESIZER">
+
+                <header className="site-header">
+                    <div className="nes-container is-rounded with-title hero-card">
+                        <p className="title">EXTPIXEL - EXTENSION IMAGE RESIZER</p>
+                        <div className="hero-content">
+                            <div className="hero-copy">
+                                <h1>EXTPIXEL</h1>
+                                <p className="tagline">EXTENSION IMAGE RESIZER</p>
+                                <p className="section-caption">General use & dev ready</p>
+                                <div className="privacy-badge">
+                                    <i className="nes-icon lock is-small"></i>
+                                    <span>100% CLIENT-SIDE - IMAGES STAY ON YOUR PC</span>
+                                </div>
+                            </div>
+                            <div className="hero-art">
+                                <div className="hero-art-frame">
+                                    <img
+                                        src="/assets/gameboy.gif"
+                                        alt="Animated pixel art handheld console"
+                                        className="hero-art-img"
+                                    />
+                                </div>
                             </div>
                         </div>
-                        <div className="hero-art">
-                            <div className="hero-art-frame">
-                                <img
-                                    src="/assets/gameboy.gif"
-                                    alt="Animated pixel art handheld console"
-                                    className="hero-art-img"
-                                />
+                    </div>
+                </header>
+
+                <ToolSelector activeTool={activeTool} onSelectTool={setActiveTool} />
+
+                {activeTool === 'resize' ? (
+                    <>
+                        <div className="nes-container with-title is-centered select-browser-panel" style={{ marginBottom: '40px' }}>
+                            <p className="title">SELECT BROWSER</p>
+                            <p className="section-caption">Tailored for extension development</p>
+                            <div className="browser-tabs">
+                                {(['edge', 'chrome', 'opera'] as Browser[]).map(b => {
+                                    const icon = BROWSER_ICON_PNG[b]
+                                    const src = typeof icon === 'string' ? icon : (icon as { src: string }).src
+
+                                    return (
+                                        <button
+                                            key={b}
+                                            type="button"
+                                            className={`nes-btn tab-btn ${browser === b ? 'is-primary' : ''}`}
+                                            onClick={() => setBrowser(b)}
+                                        >
+                                            <span className="tab-btn-content">
+                                                <img className="browser-tab-icon" src={src} alt="" aria-hidden="true" />
+                                                <span>{b.toUpperCase()}</span>
+                                            </span>
+                                        </button>
+                                    )
+                                })}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
 
-    
-            <div className="nes-container with-title is-centered select-browser-panel" style={{ marginBottom: '40px' }}>
-                <p className="title">SELECT BROWSER</p>
-                <p className="section-caption">Tailored for extension development</p>
-                <div className="browser-tabs">
-                    {(['edge', 'chrome', 'opera'] as Browser[]).map(b => {
-                        const icon = BROWSER_ICON_PNG[b]
-                        const src = typeof icon === 'string' ? icon : (icon as { src: string }).src
-
-                        return (
-                            <button
-                                key={b}
-                                type="button"
-                                className={`nes-btn tab-btn ${browser === b ? 'is-primary' : ''}`}
-                                onClick={() => setBrowser(b)}
-                            >
-                                <span className="tab-btn-content">
-                                    <img className="browser-tab-icon" src={src} alt="" aria-hidden="true" />
-                                    <span>{b.toUpperCase()}</span>
-                                </span>
-                            </button>
-                        )
-                    })}
-                </div>
-
-                <div className="preset-grid">
-                    {PRESETS[browser].map(p => (
-                        <button
-                            key={`${p.w}x${p.h}`}
-                            type="button"
-                            className={`nes-btn is-small ${targetW === p.w && targetH === p.h ? 'is-warning' : ''}`}
-                            onClick={() => selectPreset(p)}
-                            style={{ display: 'flex', flexDirection: 'column', height: 'auto', padding: '12px' }}
-                        >
-                            <span style={{ fontSize: '12px' }}>{p.label}</span>
-                            <span style={{ fontSize: '10px', opacity: 0.7 }}>{p.w}x{p.h}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-
-            <div className="nes-container with-title" style={{ marginBottom: '40px' }}>
-                <p className="title">CONFIG</p>
-                <p className="section-caption">Manual size configuration</p>
-                <div className="dimension-inputs">
-                    <div className="nes-field">
-                        <label htmlFor="width_field">WIDTH (PX)</label>
-                        <input
-                            type="number"
-                            id="width_field"
-                            className="nes-input"
-                            value={targetW}
-                            onChange={e => handleWidthChange(e.target.value)}
-                        />
-                    </div>
-                    <div className="nes-field">
-                        <label htmlFor="height_field">HEIGHT (PX)</label>
-                        <input
-                            type="number"
-                            id="height_field"
-                            className="nes-input"
-                            value={targetH}
-                            onChange={e => handleHeightChange(e.target.value)}
-                        />
-                    </div>
-                    <div className="nes-field">
-                        <label htmlFor="scale_field">SCALE %</label>
-                        <input
-                            type="number"
-                            id="scale_field"
-                            className="nes-input"
-                            placeholder="100"
-                            onBlur={e => { handleScaleBlur(e.target.value); e.target.value = '100' }}
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        className={`nes-btn ${keepAspect ? 'is-error' : 'is-disabled'}`}
-                        onClick={toggleAspect}
-                        style={{ marginBottom: '20px' }}
-                    >
-                        {keepAspect ? 'LOCK ASPECT ON' : 'LOCK ASPECT OFF'}
-                    </button>
-                </div>
-
-                <div className="mode-section">
-                    <p style={{ fontSize: '12px', marginBottom: '15px' }}>RESIZE MODE:</p>
-                            <div className="mode-grid" role="radiogroup" aria-label="Resize mode">
-                                {[
-                                    { id: 'stretch', icon: '[ ]', label: 'STRETCH' },
-                                    { id: 'autoCrop', icon: '<>', label: 'AUTO CROP' },
-                                    { id: 'manualCrop', icon: '[]', label: 'MANUAL CROP' },
-                                    { id: 'fit', icon: '==', label: 'FIT' },
-                                ].map(m => (
-                                    <div
-                                        key={m.id}
-                                        className={`nes-container is-rounded mode-card ${mode === m.id ? 'active' : ''}`}
-                                        onClick={() => setMode(m.id as ResizeMode)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault()
-                                                setMode(m.id as ResizeMode)
-                                            }
-                                        }}
-                                        role="radio"
-                                        aria-checked={mode === m.id}
-                                        aria-label={`Resize mode ${m.label}`}
-                                        tabIndex={0}
-                                        style={{ padding: '15px', textAlign: 'center' }}
+                            <div className="preset-grid">
+                                {PRESETS[browser].map(p => (
+                                    <button
+                                        key={`${p.w}x${p.h}`}
+                                        type="button"
+                                        className={`nes-btn is-small ${targetW === p.w && targetH === p.h ? 'is-warning' : ''}`}
+                                        onClick={() => selectPreset(p)}
+                                        style={{ display: 'flex', flexDirection: 'column', height: 'auto', padding: '12px' }}
                                     >
-                                        <span style={{ fontSize: '24px', display: 'block', marginBottom: '5px' }}>{m.icon}</span>
-                                        <span style={{ fontSize: '10px' }}>{m.label}</span>
-                                    </div>
+                                        <span style={{ fontSize: '12px' }}>{p.label}</span>
+                                        <span style={{ fontSize: '10px', opacity: 0.7 }}>{p.w}x{p.h}</span>
+                                    </button>
                                 ))}
                             </div>
-
-                    {mode === 'fit' && (
-                        <div className="nes-container is-rounded" style={{ padding: '15px', marginTop: '10px' }}>
-                            <p style={{ fontSize: '10px', marginBottom: '10px' }}>BACKGROUND:</p>
-                            <label>
-                                <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'white'} onChange={() => setFitBg('white')} />
-                                <span>WHITE</span>
-                            </label>
-                            <label style={{ marginLeft: '20px' }}>
-                                <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'black'} onChange={() => setFitBg('black')} />
-                                <span>BLACK</span>
-                            </label>
-                            <label style={{ marginLeft: '20px' }}>
-                                <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'blur'} onChange={() => setFitBg('blur')} />
-                                <span>BLUR</span>
-                            </label>
                         </div>
-                    )}
-                </div>
-            </div>
 
-      
-            <div className="nes-container with-title">
-                <p className="title">IMAGES ({uploads.length}/10)</p>
-                <div
-                    className={`upload-zone nes-pointer ${dragOver ? 'drag-over' : ''}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragEnter={e => {
-                        e.preventDefault()
-                        setDragOver(true)
-                    }}
-                    onDragLeave={e => {
-                        e.preventDefault()
-                        setDragOver(false)
-                    }}
-                    onDragOver={e => {
-                        e.preventDefault()
-                        setDragOver(true)
-                    }}
-                    onDrop={handleDrop}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            fileInputRef.current?.click()
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    aria-label="Upload images"
-                >
-                    <i className="nes-icon close is-large" style={{ transform: 'rotate(45deg)', marginBottom: '15px' }}></i>
-                    <p>DROP IMAGES HERE OR CLICK TO BROWSE</p>
-                    <p style={{ fontSize: '8px', opacity: 0.6 }}>PNG, JPG, WEBP, GIF</p>
-                </div>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={e => e.target.files && addFiles(Array.from(e.target.files))}
-                />
 
-                {uploads.length > 0 && (
-                    <div className="previews-grid nes-container is-rounded">
-                        {uploads.map(u => (
-                            <div key={u.id} className="thumb-item">
-                                <img src={u.preview} alt={u.file.name} />
+                        <div className="nes-container with-title" style={{ marginBottom: '40px' }}>
+                            <p className="title">CONFIG</p>
+                            <p className="section-caption">Manual size configuration</p>
+                            <div className="dimension-inputs">
+                                <div className="nes-field">
+                                    <label htmlFor="width_field">WIDTH (PX)</label>
+                                    <input
+                                        type="number"
+                                        id="width_field"
+                                        className="nes-input"
+                                        value={targetW}
+                                        onChange={e => handleWidthChange(e.target.value)}
+                                    />
+                                </div>
+                                <div className="nes-field">
+                                    <label htmlFor="height_field">HEIGHT (PX)</label>
+                                    <input
+                                        type="number"
+                                        id="height_field"
+                                        className="nes-input"
+                                        value={targetH}
+                                        onChange={e => handleHeightChange(e.target.value)}
+                                    />
+                                </div>
+                                <div className="nes-field">
+                                    <label htmlFor="scale_field">SCALE %</label>
+                                    <input
+                                        type="number"
+                                        id="scale_field"
+                                        className="nes-input"
+                                        placeholder="100"
+                                        onBlur={e => { handleScaleBlur(e.target.value); e.target.value = '100' }}
+                                    />
+                                </div>
                                 <button
                                     type="button"
-                                    className="nes-btn is-error is-small"
-                                    onClick={(e) => { e.stopPropagation(); removeUpload(u.id); }}
-                                    aria-label={`Remove ${u.file.name}`}
-                                    style={{ position: 'absolute', top: '-10px', right: '-10px', padding: '2px 8px' }}
+                                    className={`nes-btn ${keepAspect ? 'is-error' : 'is-disabled'}`}
+                                    onClick={toggleAspect}
+                                    style={{ marginBottom: '20px' }}
                                 >
-                                    X
+                                    {keepAspect ? 'LOCK ASPECT ON' : 'LOCK ASPECT OFF'}
                                 </button>
                             </div>
-                        ))}
-                        <div style={{ width: '100%', marginTop: '15px' }}>
-                            <button type="button" className="nes-btn is-error is-small" onClick={clearAll}>
-                                CLEAR ALL
+
+                            <div className="mode-section">
+                                <p style={{ fontSize: '12px', marginBottom: '15px' }}>RESIZE MODE:</p>
+                                <div className="mode-grid" role="radiogroup" aria-label="Resize mode">
+                                    {[
+                                        { id: 'stretch', icon: '[ ]', label: 'STRETCH' },
+                                        { id: 'autoCrop', icon: '<>', label: 'AUTO CROP' },
+                                        { id: 'manualCrop', icon: '[]', label: 'MANUAL CROP' },
+                                        { id: 'fit', icon: '==', label: 'FIT' },
+                                    ].map(m => (
+                                        <div
+                                            key={m.id}
+                                            className={`nes-container is-rounded mode-card ${mode === m.id ? 'active' : ''}`}
+                                            onClick={() => setMode(m.id as ResizeMode)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault()
+                                                    setMode(m.id as ResizeMode)
+                                                }
+                                            }}
+                                            role="radio"
+                                            aria-checked={mode === m.id}
+                                            aria-label={`Resize mode ${m.label}`}
+                                            tabIndex={0}
+                                            style={{ padding: '15px', textAlign: 'center' }}
+                                        >
+                                            <span style={{ fontSize: '24px', display: 'block', marginBottom: '5px' }}>{m.icon}</span>
+                                            <span style={{ fontSize: '10px' }}>{m.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {mode === 'fit' && (
+                                    <div className="nes-container is-rounded" style={{ padding: '15px', marginTop: '10px' }}>
+                                        <p style={{ fontSize: '10px', marginBottom: '10px' }}>BACKGROUND:</p>
+                                        <label>
+                                            <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'white'} onChange={() => setFitBg('white')} />
+                                            <span>WHITE</span>
+                                        </label>
+                                        <label style={{ marginLeft: '20px' }}>
+                                            <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'black'} onChange={() => setFitBg('black')} />
+                                            <span>BLACK</span>
+                                        </label>
+                                        <label style={{ marginLeft: '20px' }}>
+                                            <input type="radio" className="nes-radio" name="fit_bg" checked={fitBg === 'blur'} onChange={() => setFitBg('blur')} />
+                                            <span>BLUR</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+
+                        <ImageUploader
+                            files={uploads}
+                            onAddFiles={addFiles}
+                            onRemoveFile={removeUpload}
+                            onClearAll={clearAll}
+                        />
+
+
+                        <div style={{ textAlign: 'center', margin: '40px 0' }}>
+                            {processing && (
+                                <ProcessingProgress
+                                    doneCount={Math.round((progress / 100) * uploads.length)}
+                                    total={uploads.length}
+                                    progressPercent={progress % (100 / (uploads.length || 1))}
+                                />
+                            )}
+                            <button
+                                type="button"
+                                className={`nes-btn is-primary ${uploads.length === 0 || processing ? 'is-disabled' : ''}`}
+                                onClick={handleProcess}
+                                disabled={processing || uploads.length === 0}
+                                style={{ padding: '20px 40px' }}
+                            >
+                                {mode === 'manualCrop' ? 'START MANUAL CROP' : 'RESIZE ALL NOW'}
                             </button>
                         </div>
-                    </div>
+
+                        <ResultGallery
+                            results={results.map(r => ({ id: r.id, imageUrl: r.dataUrl, filename: r.filename, width: r.w, height: r.h }))}
+                            browser={browser}
+                            zipNamePrefix="extpixel"
+                        />
+
+                        {currentCropFile && (
+                            <ManualCropModal
+                                imageUrl={currentCropFile.preview}
+                                targetW={targetW}
+                                targetH={targetH}
+                                queuePosition={cropQueuePos}
+                                totalInQueue={uploads.length}
+                                lockAspect={keepAspect}
+                                onConfirm={handleCropConfirm}
+                                onCancel={handleCropCancel}
+                            />
+                        )}
+                    </>
+                ) : (
+                    <BackgroundRemover />
                 )}
-            </div>
 
-
-            <div style={{ textAlign: 'center', margin: '40px 0' }}>
-                {processing && (
-                    <div className="progress-container">
-                        <p style={{ fontSize: '10px', marginBottom: '10px' }}>PROCESSING... {progress}%</p>
-                        <progress className="nes-progress is-primary" value={progress} max="100"></progress>
-                    </div>
-                )}
-                <button
-                    type="button"
-                    className={`nes-btn is-primary ${uploads.length === 0 || processing ? 'is-disabled' : ''}`}
-                    onClick={handleProcess}
-                    disabled={processing || uploads.length === 0}
-                    style={{ padding: '20px 40px' }}
-                >
-                    {mode === 'manualCrop' ? 'START MANUAL CROP' : 'RESIZE ALL NOW'}
-                </button>
-            </div>
-
-            {results.length > 0 && (
-                <div className="nes-container with-title is-centered">
-                    <p className="title">RESULTS</p>
-                    <div style={{ marginBottom: '12px' }}>
-                        <button
-                            type="button"
-                            className={`nes-btn is-small ${zipDownloadMode ? 'is-success' : 'is-warning'}`}
-                            onClick={() => setZipDownloadMode(prev => !prev)}
+                <footer>
+                    <p>EXTPIXEL PROJECT - BUILT WITH NES.CSS</p>
+                    <p>NO DATA IS EVER SENT TO ANY SERVER</p>
+                    <section className="icon-list footer-socials" aria-label="Social links">
+                        <a
+                            className="footer-social-link"
+                            href="https://github.com/NubPlayz/EXTPIXEL"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="GitHub"
+                            title="GitHub"
                         >
-                            {zipDownloadMode ? 'ZIP MODE ON' : 'PNG MODE ON'}
-                        </button>
-                    </div>
-                    <div style={{ marginBottom: '20px' }}>
-                        <button type="button" className="nes-btn is-success" onClick={downloadAll}>
-                            {zipDownloadMode ? 'DOWNLOAD ALL (.ZIP)' : 'DOWNLOAD ALL (PNGS)'}
-                        </button>
-                    </div>
-                    <div className="results-grid">
-                        {results.map(r => (
-                            <div key={r.id} className="nes-container is-rounded result-item">
-                                <img src={r.dataUrl} alt={r.filename} />
-                                <p style={{ fontSize: '8px', margin: '10px 0' }}>{r.w}x{r.h}px</p>
-                                <button type="button" className="nes-btn is-primary is-small" onClick={() => downloadDataUrl(r.dataUrl, r.filename)}>
-                                    SAVE PNG
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {currentCropFile && (
-                <ManualCropModal
-                    imageUrl={currentCropFile.preview}
-                    targetW={targetW}
-                    targetH={targetH}
-                    queuePosition={cropQueuePos}
-                    totalInQueue={uploads.length}
-                    lockAspect={keepAspect}
-                    onConfirm={handleCropConfirm}
-                    onCancel={handleCropCancel}
-                />
-            )}
-
-            <footer>
-                <p>EXTPIXEL PROJECT - BUILT WITH NES.CSS</p>
-                <p>NO DATA IS EVER SENT TO ANY SERVER</p>
-                <section className="icon-list footer-socials" aria-label="Social links">
-                    <a
-                        className="footer-social-link"
-                        href="https://github.com/NubPlayz/EXTPIXEL"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="GitHub"
-                        title="GitHub"
-                    >
-                        <i className="nes-icon github is-large"></i>
-                        <span>GITHUB</span>
-                    </a>
-                    <a
-                        className="footer-social-link"
-                        href="mailto:scriptouroboros@gmail.com"
-                        aria-label="Gmail"
-                        title="Gmail"
-                    >
-                        <i className="nes-icon gmail is-large"></i>
-                        <span>GMAIL</span>
-                    </a>
-                    <a
-                        className="footer-social-link"
-                        href="https://www.reddit.com/user/Miserable_Advice1986/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Reddit"
-                        title="Reddit"
-                    >
-                        <i className="nes-icon reddit is-large"></i>
-                        <span>REDDIT</span>
-                    </a>
-                    <a
-                        className="footer-social-link"
-                        href="https://x.com/LilChimmp"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Twitter"
-                        title="Twitter"
-                    >
-                        <i className="nes-icon twitter is-large"></i>
-                        <span>TWITTER</span>
-                    </a>
-                    <a
-                        className="footer-social-link"
-                        href="https://www.youtube.com/@lilChimpChamp/videos"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="YouTube"
-                        title="YouTube"
-                    >
-                        <i className="nes-icon youtube is-large"></i>
-                        <span>YOUTUBE</span>
-                    </a>
-                </section>
-                <p className="footer-credit">
-                    Pixel art source:{' '}
-                    <a href="https://anubiarts-info.carrd.co" target="_blank" rel="noopener noreferrer">
-                        AnubiArts
-                    </a>{' '}
-                    - CC BY-SA 4.0 - Modified (cropped and resized) - License:{' '}
-                    <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">
-                        https://creativecommons.org/licenses/by-sa/4.0/
-                    </a>
-                </p>
-            </footer>
-        </main>
+                            <i className="nes-icon github is-large"></i>
+                            <span>GITHUB</span>
+                        </a>
+                        <a
+                            className="footer-social-link"
+                            href="mailto:scriptouroboros@gmail.com"
+                            aria-label="Gmail"
+                            title="Gmail"
+                        >
+                            <i className="nes-icon gmail is-large"></i>
+                            <span>GMAIL</span>
+                        </a>
+                        <a
+                            className="footer-social-link"
+                            href="https://www.reddit.com/user/Miserable_Advice1986/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Reddit"
+                            title="Reddit"
+                        >
+                            <i className="nes-icon reddit is-large"></i>
+                            <span>REDDIT</span>
+                        </a>
+                        <a
+                            className="footer-social-link"
+                            href="https://x.com/LilChimmp"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Twitter"
+                            title="Twitter"
+                        >
+                            <i className="nes-icon twitter is-large"></i>
+                            <span>TWITTER</span>
+                        </a>
+                        <a
+                            className="footer-social-link"
+                            href="https://www.youtube.com/@lilChimpChamp/videos"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="YouTube"
+                            title="YouTube"
+                        >
+                            <i className="nes-icon youtube is-large"></i>
+                            <span>YOUTUBE</span>
+                        </a>
+                    </section>
+                    <p className="footer-credit">
+                        Pixel art source:{' '}
+                        <a href="https://anubiarts-info.carrd.co" target="_blank" rel="noopener noreferrer">
+                            AnubiArts
+                        </a>{' '}
+                        - CC BY-SA 4.0 - Modified (cropped and resized) - License:{' '}
+                        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">
+                            https://creativecommons.org/licenses/by-sa/4.0/
+                        </a>
+                    </p>
+                </footer>
+            </main>
         </>
     )
 }

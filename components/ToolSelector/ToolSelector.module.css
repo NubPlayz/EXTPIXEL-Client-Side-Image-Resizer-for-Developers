@@ -1,0 +1,42 @@
+.selectorContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  width: 100%;
+}
+
+.toolBtn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 14px 24px;
+  border: 4px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #000000;
+  transition: transform 0.1s ease, background-color 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolBtn:hover {
+  background-color: #f0f0f0;
+}
+
+.toolBtn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 #000000;
+}
+
+.activeTool {
+  background-color: #92cc41;
+  color: #000000;
+  box-shadow: inset -4px -4px 0px 0px #4aa52e, 0 4px 0 #000000;
+}
+
+.activeTool:hover {
+  background-color: #a4db4e;
+}
