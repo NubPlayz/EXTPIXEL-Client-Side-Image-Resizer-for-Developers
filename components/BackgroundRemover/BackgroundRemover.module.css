@@ -1,0 +1,20 @@
+.errorBox {
+    background-color: #e76e55;
+    color: #ffffff;
+    margin-bottom: 20px;
+    padding: 12px;
+}
+
+.errorText {
+    font-size: 10px;
+    margin: 0;
+}
+
+.actionContainer {
+    text-align: center;
+    margin: 40px 0;
+}
+
+.actionButton {
+    padding: 20px 40px;
+}
