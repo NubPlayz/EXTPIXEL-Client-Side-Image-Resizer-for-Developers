@@ -14,14 +14,14 @@ export default function ToolSelector({ activeTool, onSelectTool }: ToolSelectorP
         <div className={styles.selectorContainer}>
             <button
                 type="button"
-                className={`${styles.toolBtn} ${activeTool === 'resize' ? styles.activeTool : ''}`}
+                className={`nes-pointer ${styles.toolBtn} ${activeTool === 'resize' ? styles.activeTool : ''}`}
                 onClick={() => onSelectTool('resize')}
             >
                 [ Resize ]
             </button>
             <button
                 type="button"
-                className={`${styles.toolBtn} ${activeTool === 'bg-remove' ? styles.activeTool : ''}`}
+                className={`nes-pointer ${styles.toolBtn} ${activeTool === 'bg-remove' ? styles.activeTool : ''}`}
                 onClick={() => onSelectTool('bg-remove')}
             >
                 [ Remove Background ]
